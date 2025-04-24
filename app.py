@@ -30,7 +30,8 @@ def index():
             for year in range(start_year, end_year + 1):
                 for month in range(start_month, end_month + 1):
                     for day in target_days:
-                        filename = f"data/aim_{year}{month:02}{day}.csv"
+                        filename = os.path.join(os.path.dirname(__file__), "data", f"aim_{year}{month:02}{day}.csv")
+                        print("📁 探してるファイル:", filename)
                         if os.path.exists(filename):
                             df = pd.read_csv(filename)
                             all_data.append(df)
@@ -62,6 +63,6 @@ def index():
 
     return render_template("index.html", result=result, result_sorted=result_sorted, error=error)
 
-# Render用：ホストとポートを指定
+# Renderでの公開用設定
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
