@@ -4,6 +4,9 @@ import os
 
 app = Flask(__name__)
 
+# Render用：絶対パスで data ディレクトリを指定
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 @app.route("/", methods=["GET", "POST"])
 def index():
     result = None
@@ -30,11 +33,11 @@ def index():
             for year in range(start_year, end_year + 1):
                 for month in range(start_month, end_month + 1):
                     for day in target_days:
-                        filename = os.path.join(os.path.dirname(__file__), "data", f"aim_{year}{month:02}{day}.csv")
-                        print("📁 探してるファイル:", filename)
+                        filename = os.path.join(BASE_DIR, "data", f"aim_{year}{month:02}{day}.csv")
                         if os.path.exists(filename):
                             df = pd.read_csv(filename)
                             all_data.append(df)
+                            print(f"✅ 読み込み成功: {filename}")
                         else:
                             print(f"⚠ ファイルが見つかりません: {filename}")
 
@@ -50,7 +53,7 @@ def index():
 
                 result = agg.sort_values("台番").reset_index(drop=True)
 
-                # ソート用（RB率が高い順）
+                # RB率が高い順でソート（RB率 = G数 / RB が小さい順）
                 rb_sort_df = agg[agg["RB"] > 0].copy()
                 rb_sort_df["RB率数値"] = rb_sort_df["G数"] / rb_sort_df["RB"]
                 result_sorted = rb_sort_df.sort_values("RB率数値").drop(columns=["RB率数値"]).reset_index(drop=True)
@@ -63,6 +66,6 @@ def index():
 
     return render_template("index.html", result=result, result_sorted=result_sorted, error=error)
 
-# Renderでの公開用設定
+# Render用（ポート指定）
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
