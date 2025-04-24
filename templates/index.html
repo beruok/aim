@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>CSV集計ビューア</title>
+    <style>
+        .tables-container {
+            display: flex;
+            gap: 50px;
+            margin-top: 30px;
+        }
+        table {
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #333;
+            padding: 5px 10px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>CSV集計ビューア</h1>
+
+    <form method="POST">
+        <label>開始年：</label>
+        <input type="number" name="start_year" required>
+        <label>終了年：</label>
+        <input type="number" name="end_year" required><br><br>
+
+        <label>開始月：</label>
+        <input type="number" name="start_month" min="1" max="12" required>
+        <label>終了月：</label>
+        <input type="number" name="end_month" min="1" max="12" required><br><br>
+
+        <label>対象日：</label>
+        <input type="checkbox" name="days" value="07">07日
+        <input type="checkbox" name="days" value="17">17日
+        <input type="checkbox" name="days" value="27">27日<br><br>
+
+        <input type="submit" value="集計実行">
+    </form>
+
+    {% if error %}
+        <p style="color:red;">{{ error }}</p>
+    {% endif %}
+
+    {% if result is not none and not result.empty and result_sorted is not none and not result_sorted.empty %}
+    <div class="tables-container">
+        <div>
+            <h2>集計結果（台番順）</h2>
+            <table>
+                <tr>
+                    {% for col in result.columns if col != "RB_rate_sort" %}
+                        <th>{{ col }}</th>
+                    {% endfor %}
+                </tr>
+                {% for row in result.values.tolist() %}
+                <tr>
+                    {% for val in row[:-1] %}
+                        <td>{{ val }}</td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+
+        <div>
+            <h2>集計結果2（RB率が高い順）</h2>
+            <table>
+                <tr>
+                    {% for col in result_sorted.columns if col != "RB_rate_sort" %}
+                        <th>{{ col }}</th>
+                    {% endfor %}
+                </tr>
+                {% for row in result_sorted.values.tolist() %}
+                <tr>
+                    {% for val in row[:-1] %}
+                        <td>{{ val }}</td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</body>
+</html>

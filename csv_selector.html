@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>CSVデータ選択</title>
+  <script>
+    function getSelectedCSV() {
+      const startYear = parseInt(document.getElementById("startYear").value);
+      const endYear = parseInt(document.getElementById("endYear").value);
+      const startMonth = parseInt(document.getElementById("startMonth").value);
+      const endMonth = parseInt(document.getElementById("endMonth").value);
+      const selectedDays = [];
+      if (document.getElementById("day07").checked) selectedDays.push("07");
+      if (document.getElementById("day17").checked) selectedDays.push("17");
+      if (document.getElementById("day27").checked) selectedDays.push("27");
+
+      let results = "";
+
+      for (let year = startYear; year <= endYear; year++) {
+        for (let month = 1; month <= 12; month++) {
+          if (year === startYear && month < startMonth) continue;
+          if (year === endYear && month > endMonth) break;
+
+          const monthStr = String(month).padStart(2, '0');
+          selectedDays.forEach(day => {
+            const filename = `aim_${year}${monthStr}${day}.csv`;
+            results += `<li><a href="../data/${filename}" target="_blank">${filename}</a></li>`;
+          });
+        }
+      }
+
+      document.getElementById("result").innerHTML = `<ul>${results}</ul>`;
+    }
+  </script>
+</head>
+<body>
+  <h1>CSVファイル期間選択</h1>
+  <label>開始年:</label>
+  <input type="text" id="startYear" placeholder="2025" value="2025">
+  <label>終了年:</label>
+  <input type="text" id="endYear" placeholder="2025" value="2025">
+  <br>
+  <label>開始月:</label>
+  <input type="text" id="startMonth" placeholder="01" value="01">
+  <label>終了月:</label>
+  <input type="text" id="endMonth" placeholder="04" value="04">
+
+  <div style="margin-top:10px">
+    <label><input type="checkbox" id="day07"> 07日</label>
+    <label><input type="checkbox" id="day17"> 17日</label>
+    <label><input type="checkbox" id="day27"> 27日</label>
+  </div>
+
+  <div style="margin-top:10px">
+    <button onclick="getSelectedCSV()">CSVファイル取得</button>
+  </div>
+
+  <div id="result" style="margin-top:20px;"></div>
+</body>
+</html>
