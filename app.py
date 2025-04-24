@@ -1,24 +1,9 @@
 from flask import Flask, render_template, request
 import pandas as pd
 import os
-import glob
 
 app = Flask(__name__)
 
-# --- 補助関数 ---
-def str_rate_to_float(rate):
-    try:
-        return float(rate.split("/")[1])
-    except:
-        return None
-
-def rb_rate_str_to_float(rate):
-    try:
-        return float(rate.split("/")[1])
-    except:
-        return float("inf")
-
-# --- メインルート ---
 @app.route("/", methods=["GET", "POST"])
 def index():
     result = None
@@ -26,74 +11,57 @@ def index():
     error = None
 
     if request.method == "POST":
-        # フォームから値を取得
-        start_year = request.form.get("start_year", "")
-        end_year = request.form.get("end_year", "")
-        start_month = request.form.get("start_month", "")
-        end_month = request.form.get("end_month", "")
-        selected_days = request.form.getlist("days")
+        print("🔥 フォームが送信されました！")
+        print("📦 受け取ったフォーム内容:", request.form)
 
-        # 未入力チェック
-        if not (start_year and end_year and start_month and end_month and selected_days):
-            error = "すべての項目を選択してください。"
-            return render_template("index.html", result=None, result_sorted=None, error=error)
+        try:
+            start_year = int(request.form.get("start_year"))
+            end_year = int(request.form.get("end_year"))
+            start_month = int(request.form.get("start_month"))
+            end_month = int(request.form.get("end_month"))
+            target_days = request.form.getlist("target_days")
 
-        # 数値に変換
-        start_year = int(start_year)
-        end_year = int(end_year)
-        start_month = int(start_month)
-        end_month = int(end_month)
+            print(f"▶ 開始年: {start_year}, 終了年: {end_year}")
+            print(f"▶ 開始月: {start_month}, 終了月: {end_month}")
+            print(f"▶ 対象日: {target_days}")
 
-        # 対象ファイルを抽出
-        data_dir = "../data"
-        file_list = glob.glob(os.path.join(data_dir, "aim_*.csv"))
-        target_files = []
+            all_data = []
 
-        for file in file_list:
-            basename = os.path.basename(file)  # e.g. aim_20250417.csv
-            y = int(basename[4:8])
-            m = int(basename[8:10])
-            d = basename[10:12]
-            if start_year <= y <= end_year and start_month <= m <= end_month and d in selected_days:
-                target_files.append(file)
+            for year in range(start_year, end_year + 1):
+                for month in range(start_month, end_month + 1):
+                    for day in target_days:
+                        filename = f"data/aim_{year}{month:02}{day}.csv"
+                        if os.path.exists(filename):
+                            df = pd.read_csv(filename)
+                            all_data.append(df)
+                        else:
+                            print(f"⚠ ファイルが見つかりません: {filename}")
 
-        # CSVの読み込みと集計
-        df_list = []
-        for file in target_files:
-            df = pd.read_csv(file)
-            df = df[["台番", "G数", "BB", "RB", "BB率", "RB率"]].copy()
-            df_list.append(df)
+            if all_data:
+                df_all = pd.concat(all_data, ignore_index=True)
+                df_all["G数"] = pd.to_numeric(df_all["G数"], errors="coerce")
+                df_all["BB"] = pd.to_numeric(df_all["BB"], errors="coerce")
+                df_all["RB"] = pd.to_numeric(df_all["RB"], errors="coerce")
 
-        if df_list:
-            df_all = pd.concat(df_list, ignore_index=True)
-            df_all["BB率数値"] = df_all["BB率"].apply(str_rate_to_float)
-            df_all["RB率数値"] = df_all["RB率"].apply(str_rate_to_float)
+                agg = df_all.groupby("台番")[["G数", "BB", "RB"]].sum().reset_index()
+                agg["BB率_avg"] = agg.apply(lambda row: f"1/{int(row['G数']/row['BB'])}" if row["BB"] > 0 else "-", axis=1)
+                agg["RB率_avg"] = agg.apply(lambda row: f"1/{int(row['G数']/row['RB'])}" if row["RB"] > 0 else "-", axis=1)
 
-            # 合計と平均を集計
-            agg_numeric = df_all.groupby("台番")[["G数", "BB", "RB"]].sum()
-            agg_rate = df_all.groupby("台番")[["BB率数値", "RB率数値"]].mean().round()
+                result = agg.sort_values("台番").reset_index(drop=True)
 
-            # BB率・RB率を "1/xxx" に戻す
-            agg_rate["BB率_avg"] = agg_rate["BB率数値"].apply(
-                lambda x: f"1/{int(x)}" if pd.notnull(x) and x != 0 else "-"
-            )
-            agg_rate["RB率_avg"] = agg_rate["RB率数値"].apply(
-                lambda x: f"1/{int(x)}" if pd.notnull(x) and x != 0 else "-"
-            )
+                # ソート用（RB率が高い順）
+                rb_sort_df = agg[agg["RB"] > 0].copy()
+                rb_sort_df["RB率数値"] = rb_sort_df["G数"] / rb_sort_df["RB"]
+                result_sorted = rb_sort_df.sort_values("RB率数値").drop(columns=["RB率数値"]).reset_index(drop=True)
+            else:
+                error = "指定されたCSVファイルが見つかりませんでした。"
 
-            # 結合
-            result = pd.concat([agg_numeric, agg_rate[["BB率_avg", "RB率_avg"]]], axis=1).reset_index()
-
-            # 欠損を "-" に置換（←これが肝心！）
-            result.fillna("-", inplace=True)
-
-            # RB率でソートしたバージョン
-            result_sorted = result.copy()
-            result_sorted["RB_rate_sort"] = result_sorted["RB率_avg"].apply(rb_rate_str_to_float)
-            result_sorted = result_sorted.sort_values("RB_rate_sort")
-            result_sorted.fillna("-", inplace=True)
+        except Exception as e:
+            error = f"エラーが発生しました: {e}"
+            print("❌ エラー詳細:", e)
 
     return render_template("index.html", result=result, result_sorted=result_sorted, error=error)
 
+# Render用：ホストとポートを指定
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
