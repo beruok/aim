@@ -45,20 +45,20 @@
         <p style="color:red;">{{ error }}</p>
     {% endif %}
 
-    {% if result is not none and not result.empty and result_sorted is not none and not result_sorted.empty %}
+    {% if result and result_sorted %}
     <div class="tables-container">
         <div>
             <h2>集計結果（台番順）</h2>
             <table>
                 <tr>
-                    {% for col in result.columns if col != "RB_rate_sort" %}
+                    {% for col in result.columns if col != 'RB_rate_sort' %}
                         <th>{{ col }}</th>
                     {% endfor %}
                 </tr>
-                {% for row in result.values.tolist() %}
+                {% for row in result.itertuples(index=False) %}
                 <tr>
-                    {% for val in row[:-1] %}
-                        <td>{{ val }}</td>
+                    {% for col in result.columns if col != 'RB_rate_sort' %}
+                        <td>{{ getattr(row, col) }}</td>
                     {% endfor %}
                 </tr>
                 {% endfor %}
@@ -69,14 +69,14 @@
             <h2>集計結果2（RB率が高い順）</h2>
             <table>
                 <tr>
-                    {% for col in result_sorted.columns if col != "RB_rate_sort" %}
+                    {% for col in result_sorted.columns if col != 'RB_rate_sort' %}
                         <th>{{ col }}</th>
                     {% endfor %}
                 </tr>
-                {% for row in result_sorted.values.tolist() %}
+                {% for row in result_sorted.itertuples(index=False) %}
                 <tr>
-                    {% for val in row[:-1] %}
-                        <td>{{ val }}</td>
+                    {% for col in result_sorted.columns if col != 'RB_rate_sort' %}
+                        <td>{{ getattr(row, col) }}</td>
                     {% endfor %}
                 </tr>
                 {% endfor %}
